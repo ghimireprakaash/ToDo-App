@@ -7,7 +7,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<StatefulWidget> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -19,6 +19,55 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _editTask(Task updatedTask, int index) {
+    setState(() {
+      tasks[index] = updatedTask;
+    });
+  }
+
+  void _deleteTask(int index) {
+    setState(() {
+      tasks.removeAt(index);
+    });
+  }
+
+  void _navigateToEditScreen(Task task, int index) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddTaskScreen(task: task, isEditing: true),
+      ),
+    );
+
+    if (result != null && result is Task) {
+      _editTask(result, index);
+    }
+  }
+
+  Future<void> _confirmDelete(int index) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Task'),
+        content: Text('Are you sure you want to delete this task?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _deleteTask(index);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,7 +76,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ? Center(child: Text('No tasks yet! Tap + to add one.'))
           : ListView.builder(
               itemCount: tasks.length,
-              itemBuilder: (context, index) => TaskCard(task: tasks[index]),
+              itemBuilder: (context, index) {
+                final task = tasks[index];
+
+                return TaskCard(
+                  task: task,
+                  onEdit: () => _navigateToEditScreen(task, index),
+                  onDelete: () => _confirmDelete(index),
+                );
+              },
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
