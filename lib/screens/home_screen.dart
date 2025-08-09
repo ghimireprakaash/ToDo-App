@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:todo_app/models/task.dart';
 import 'package:todo_app/screens/add_task_screen.dart';
 import 'package:todo_app/widgets/task_card.dart';
@@ -11,23 +12,32 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Task> tasks = [];
+  late Box<Task> taskBox;
+
+  @override
+  void initState() {
+    super.initState();
+
+    taskBox = Hive.box<Task>('tasks');
+  }
+
+  // List<Task> tasks = [];
 
   void _addTask(Task task) {
     setState(() {
-      tasks.add(task);
+      taskBox.add(task);
     });
   }
 
   void _editTask(Task updatedTask, int index) {
     setState(() {
-      tasks[index] = updatedTask;
+      taskBox.putAt(index, updatedTask);
     });
   }
 
   void _deleteTask(int index) {
     setState(() {
-      tasks.removeAt(index);
+      taskBox.deleteAt(index);
     });
   }
 
@@ -72,20 +82,29 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('📑 ToDo')),
-      body: tasks.isEmpty
-          ? Center(child: Text('No tasks yet! Tap + to add one.'))
-          : ListView.builder(
-              itemCount: tasks.length,
-              itemBuilder: (context, index) {
-                final task = tasks[index];
+      body: ValueListenableBuilder(
+        valueListenable: taskBox.listenable(),
+        builder: (context, Box<Task> box, _) {
+          final tasks = box.values.toList();
 
-                return TaskCard(
-                  task: task,
-                  onEdit: () => _navigateToEditScreen(task, index),
-                  onDelete: () => _confirmDelete(index),
-                );
-              },
-            ),
+          if (tasks.isEmpty) {
+            return Center(child: Text('No tasks yet! Tap + to add one.'));
+          }
+
+          return ListView.builder(
+            itemCount: tasks.length,
+            itemBuilder: (context, index) {
+              final task = tasks[index];
+
+              return TaskCard(
+                task: task,
+                onEdit: () => _navigateToEditScreen(task, index),
+                onDelete: () => _confirmDelete(index),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(
